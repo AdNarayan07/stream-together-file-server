@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Processing Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+
+    .container {
+      margin-bottom: 20px;
+    }
+
+    .container label {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .container input,
+    .container button,
+    .container select {
+      padding: 10px;
+      width: 100%;
+      max-width: 400px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+
+    .progress {
+      background-color: #f0f0f0;
+      border-radius: 5px;
+      height: 20px;
+      margin-top: 10px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: #4caf50;
+      width: 0%;
+      text-align: center;
+      color: white;
+    }
+
+    .log {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .log p {
+      margin: 0;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Video Processing Tool</h1>
+
+  <!-- Download from URL -->
+  <div class="container">
+    <h2>Download Video from URL</h2>
+    <label for="url">URL:</label>
+    <input type="text" id="url" placeholder="Enter video URL">
+    <label for="filename">Filename:</label>
+    <input type="text" id="downloadFilename" placeholder="Enter filename">
+    <button onclick="downloadFromURL()">Download</button>
+    <div class="log" id="downloadLog"></div>
+  </div>
+
+  <!-- Download via Torrent -->
+  <div class="container">
+    <h2>Download Video via Torrent</h2>
+    <label for="magnetLink">Magnet Link:</label>
+    <input type="text" id="magnetLink" placeholder="Enter magnet link">
+    <button onclick="downloadFromTorrent()">Download Torrent</button>
+    <div class="log" id="torrentLog"></div>
+  </div>
+
+  <!-- Video Info -->
+  <div class="container">
+    <h2>Get Video Info</h2>
+    <label for="videoInfoFilename">Filename:</label>
+    <input type="text" id="videoInfoFilename" placeholder="Enter video filename">
+    <button onclick="getVideoInfo()">Get Info</button>
+    <div class="log" id="videoInfoLog"></div>
+  </div>
+
+  <!-- Extract Subtitles -->
+  <div class="container">
+    <h2>Extract Subtitles</h2>
+    <label for="subtitleFilename">Filename:</label>
+    <input type="text" id="subtitleFilename" placeholder="Enter video filename">
+    <button onclick="extractSubtitles()">Extract Subtitles</button>
+    <div class="log" id="subtitleLog"></div>
+  </div>
+
+  <!-- Check Progress -->
+  <div class="container">
+    <h2>Check Progress by Task ID</h2>
+    <label for="progressId">Enter Task ID:</label>
+    <input type="text" id="progressId" placeholder="Enter progress ID">
+    <button onclick="checkProgress()">Check Progress</button>
+    <div class="log" id="progressLog"></div>
+  </div>
+
+  <!-- Unified Video Processing -->
+  <div class="container">
+    <h2>Process Video</h2>
+    <label for="inputFilename">Input Filename:</label>
+    <input type="text" id="inputFilename" placeholder="Enter input filename">
+    <label for="outputFilename">Output Filename:</label>
+    <input type="text" id="outputFilename" placeholder="Enter output filename">
+
+    <label for="codec">Codec:</label>
+    <select id="codec">
+      <option value="">Default</option>
+      <option value="libx264">H.264 (libx264)</option>
+      <option value="libx265">H.265 (libx265)</option>
+      <option value="vp9">VP9</option>
+    </select>
+
+    <label for="crf">CRF (Quality Control, 0-51):</label>
+    <input type="number" id="crf" min="0" max="51" placeholder="Enter CRF value">
+
+    <label for="preset">Preset (Compression Speed):</label>
+    <select id="preset">
+      <option value="">Default</option>
+      <option value="ultrafast">Ultrafast</option>
+      <option value="superfast">Superfast</option>
+      <option value="veryfast">Veryfast</option>
+      <option value="faster">Faster</option>
+      <option value="fast">Fast</option>
+      <option value="medium">Medium</option>
+      <option value="slow">Slow</option>
+      <option value="slower">Slower</option>
+      <option value="veryslow">Veryslow</option>
+    </select>
+
+    <label for="resolution">Resolution (e.g., 1280x720):</label>
+    <input type="text" id="resolution" placeholder="Enter resolution (optional)">
+
+    <button onclick="processVideo()">Process Video</button>
+    <div class="log" id="processLog"></div>
+  </div>
+
+  <script>
+    const progressSources = {};
+    // Download from URL
+    function downloadFromURL() {
+      const url = document.getElementById('url').value;
+      const filename = document.getElementById('downloadFilename').value;
+      const taskId = download-${Date.now()};  // Unique taskId
+
+      if (!url || !filename) {
+        alert('URL and filename are required');
+        return;
+      }
+
+      // Clear previous log
+      document.getElementById('downloadLog').innerHTML = '';
+
+      // Send request to download video
+      fetch('/download/url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, filename, taskId }),
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            const progressLog = document.getElementById('downloadLog');
+            progressLog.innerHTML = Download started for ${filename}.<br>Progress ID: ${taskId};
+          } else {
+            document.getElementById('downloadLog').innerHTML = Error: ${await response.text()};
+          }
+        });
+
+      // Listen for progress updates using SSE
+      listenForProgress(taskId, 'downloadLog');
+    }
+
+    // Download via Torrent
+    function downloadFromTorrent() {
+      const magnetLink = document.getElementById('magnetLink').value;
+      const taskId = torrent-${Date.now()};  // Unique taskId
+
+      if (!magnetLink) {
+        alert('Magnet link and filename are required');
+        return;
+      }
+
+      // Clear previous log
+      document.getElementById('torrentLog').innerHTML = '';
+
+      // Send request to download torrent
+      fetch('/download/torrent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ magnetLink, taskId }),
+      })
+        .then(async (response) => {
+          console.log(response)
+          if (response.ok) {
+            const progressLog = document.getElementById('torrentLog');
+            progressLog.innerHTML = Torrent download started for ${filename}.<br>Progress ID: ${taskId};
+          } else {
+            document.getElementById('torrentLog').innerHTML = Error: ${await response.text()};
+          }
+        });
+
+      // Listen for progress updates using SSE
+      listenForProgress(taskId, 'torrentLog');
+    }
+
+    // Get Video Info
+    function getVideoInfo() {
+      const filename = document.getElementById('videoInfoFilename').value;
+      const taskId = info-${Date.now()};  // Unique taskId
+
+      if (!filename) {
+        alert('Filename is required');
+        return;
+      }
+
+      // Clear previous log
+      document.getElementById('videoInfoLog').innerHTML = '';
+
+      // Send request to get video info
+      fetch(/videos/info/${filename})
+        .then((response) => response.json())
+        .then((data) => {
+          const infoDiv = document.getElementById('videoInfoLog');
+          infoDiv.innerHTML = JSON.stringify(data);
+          console.log(data)
+        })
+        .catch((error) => {
+          document.getElementById('videoInfoLog').innerHTML = Error: ${error};
+        });
+    }
+
+    // Extract Subtitles
+    function extractSubtitles() {
+      const inputFilename = document.getElementById('subtitleFilename').value;
+
+      if (!inputFilename) {
+        alert('Filename is required');
+        return;
+      }
+
+      // Clear previous log
+      document.getElementById('subtitleLog').innerHTML = '';
+
+      // Send request to extract subtitles
+      fetch('/process/extract-subtitles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inputFilename }),
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            const progressLog = document.getElementById('subtitleLog');
+            progressLog.innerHTML = await response.text();
+          } else {
+            document.getElementById('subtitleLog').innerHTML = Error: ${await response.text()};
+          }
+        });
+
+      // Listen for progress updates using SSE
+      listenForProgress(taskId, 'subtitleLog');
+    }
+    // Process Video (Merged Change Codec & Compression)
+    function processVideo() {
+      const inputFilename = document.getElementById('inputFilename').value;
+      const outputFilename = document.getElementById('outputFilename').value;
+      const codec = document.getElementById('codec').value;
+      const crf = document.getElementById('crf').value;
+      const preset = document.getElementById('preset').value;
+      const resolution = document.getElementById('resolution').value;
+      const taskId = process-${Date.now()}; // Unique task ID
+
+      if (!inputFilename || !outputFilename) {
+        alert('Input filename and output filename are required');
+        return;
+      }
+
+      // Clear previous log
+      document.getElementById('processLog').innerHTML = '';
+
+      // Create the request payload
+      const payload = {
+        inputFilename,
+        outputFilename,
+        codec: codec || undefined,
+        crf: crf || undefined,
+        preset: preset || undefined,
+        resolution: resolution || undefined,
+        taskId,
+      };
+
+      // Send the request to the server
+      fetch('/process/convert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            const processLog = document.getElementById('processLog');
+            processLog.innerHTML = Processing started for ${inputFilename}.<br>Progress ID: ${taskId};
+          } else {
+            document.getElementById('processLog').innerHTML = Error: ${await response.text()};
+          }
+        });
+
+      // Listen for progress updates using SSE
+      listenForProgress(taskId, 'processLog');
+    }
+
+    // Listen for progress using SSE
+    function listenForProgress(taskId, logElementId) {
+      if (progressSources[taskId]) {
+        progressSources[taskId].close(); // Close any existing connection
+      }
+
+      const progressLog = document.getElementById(logElementId);
+
+      const eventSource = new EventSource(/progress/${taskId});
+      eventSource.addEventListener("message", (event) => {
+        const progressData = JSON.parse(event.data);
+        progressLog.innerHTML = Progress: ${progressData.percent}% - ${progressData.status};
+        updateProgressBar(progressData.percent, logElementId);
+
+        // Close the EventSource when processing is completed
+        if (progressData.status === "completed") {
+          eventSource.close();
+        }
+      });
+
+      eventSource.addEventListener("error", () => {
+        progressLog.innerHTML += <br>Failed to get progress updates.;
+      });
+
+      progressSources[taskId] = eventSource;
+    }
+
+    // Update progress bar
+    function updateProgressBar(percent, logElementId) {
+      const progressBar = document.getElementById(logElementId).querySelector('.progress-bar');
+      if (!progressBar) {
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'progress';
+        progressContainer.innerHTML = <div class="progress-bar"></div>;
+        document.getElementById(logElementId).appendChild(progressContainer);
+      }
+      document.querySelector(#${logElementId} .progress-bar).style.width = ${percent}%;
+    }
+  </script>
+</body>
+</html>
